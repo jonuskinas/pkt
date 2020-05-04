@@ -31,7 +31,7 @@ class InvalidSyntaxError(Error):
 
 class RTError(Error):
     def __init__(self, pos_start, pos_end, details, context):
-        super().__init__(pos_start, pos_end, "RunTime Error", details)
+        super().__init__(pos_start, pos_end, "Klaida", details)
         self.context = context
 
     def as_string(self):
@@ -374,27 +374,33 @@ class Number:
         if isinstance(other, Number):
             return Number(self.value + other.value).set_context(self.context), None
 
-    def uniadded_to(self, other, symbol):
+    def uniadded_to(self, other, node1):
         if isinstance(other, Number):
-            times = int(symbol[0])
+            if node1.op_tok.value[1] != '+':
+                return None, RTError(node1.op_tok.pos_start, node1.op_tok.pos_end, 'Unikalios funkcijos didžiausias kiekis 9', self.context)
+            times = int(node1.op_tok.value[0])
             return Number(self.value + (times * other.value)).set_context(self.context), None
 
     def subbed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value - other.value).set_context(self.context), None
 
-    def unisubbed_by(self, other, symbol):
+    def unisubbed_by(self, other, node1):
         if isinstance(other, Number):
-            times = int(symbol[0])
+            if node1.op_tok.value[1] != '-':
+                return None, RTError(node1.op_tok.pos_start, node1.op_tok.pos_end, 'Unikalios funkcijos didžiausias kiekis 9', self.context)
+            times = int(node1.op_tok.value[0])
             return Number(self.value - (times * other.value)).set_context(self.context), None
 
     def multed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value * other.value).set_context(self.context), None
 
-    def unimulted_by(self, other, symbol):
+    def unimulted_by(self, other, node1):
         if isinstance(other, Number):
-            times = int(symbol[0])
+            if node1.op_tok.value[1] != '*':
+                return None, RTError(node1.op_tok.pos_start, node1.op_tok.pos_end, 'Unikalios funkcijos didžiausias kiekis 9', self.context)
+            times = int(node1.op_tok.value[0])
             a = self.value
             b = other.value
             while times != 0:
@@ -409,9 +415,11 @@ class Number:
             else:
                 return Number(self.value / other.value).set_context(self.context), None
 
-    def unidived_by(self, other, symbol):
+    def unidived_by(self, other, node1):
         if isinstance(other, Number):
-            times = int(symbol[0])
+            if node1.op_tok.value[1] != '/':
+                return None, RTError(node1.op_tok.pos_start, node1.op_tok.pos_end, 'Unikalios funkcijos didžiausias kiekis 9', self.context)
+            times = int(node1.op_tok.value[0])
             a = self.value
             b = other.value
             while times != 0:
@@ -466,13 +474,13 @@ class Interpreter:
         elif node.op_tok.type == TT_DIV:
             result, error = left.dived_by(right)
         elif node.op_tok.type == TT_UNIPLUS:
-            result, error = left.uniadded_to(right, node.op_tok.value)
+            result, error = left.uniadded_to(right, node)
         elif node.op_tok.type == TT_UNIMINUS:
-            result, error = left.unisubbed_by(right, node.op_tok.value)
+            result, error = left.unisubbed_by(right, node)
         elif node.op_tok.type == TT_UNIMUL:
-            result, error = left.unimulted_by(right, node.op_tok.value)
+            result, error = left.unimulted_by(right, node)
         elif node.op_tok.type == TT_UNIDIV:
-            result, error = left.unidived_by(right, node.op_tok.value)
+            result, error = left.unidived_by(right, node)
 
         if error:
             return res.failure(error)
