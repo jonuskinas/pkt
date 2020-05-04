@@ -85,6 +85,10 @@ TT_DIV = 'DIV'
 TT_LPAREN = 'LPAREN'
 TT_RPAREN = 'RPAREN'
 TT_EOF = 'EOF'
+TT_UNIPLUS = 'UNIPLUS'
+TT_UNIMUL = 'UNIMUL'
+TT_UNIDIV = 'UNIDIV'
+TT_UNIMINUS = 'UNIMINUS'
 
 
 class Token:
@@ -125,16 +129,16 @@ class Lexer:
             elif self.current_char in DIGITS:
                 tokens.append(self.make_number())
             elif self.current_char == '+':
-                tokens.append(Token(TT_PLUS, pos_start=self.pos))
+                tokens.append(self.make_unikali())
                 self.advance()
             elif self.current_char == '-':
-                tokens.append(Token(TT_MINUS, pos_start=self.pos))
+                tokens.append(self.make_unikali())
                 self.advance()
             elif self.current_char == '*':
-                tokens.append(Token(TT_MUL, pos_start=self.pos))
+                tokens.append(self.make_unikali())
                 self.advance()
             elif self.current_char == '/':
-                tokens.append(Token(TT_DIV, pos_start=self.pos))
+                tokens.append(self.make_unikali())
                 self.advance()
             elif self.current_char == '(':
                 tokens.append(Token(TT_LPAREN, pos_start=self.pos))
@@ -168,6 +172,36 @@ class Lexer:
             return Token(TT_INT, int(num_str), pos_start, self.pos)
         else:
             return Token(TT_FLOAT, float(num_str), pos_start, self.pos)
+
+    def make_unikali(self):
+        simbolio_count = 0
+        unikali_str = ''
+        pos_start = self.pos.copy()
+
+        while self.current_char != None and self.current_char in '+-/*':
+            unikali_str += self.current_char
+            simbolio_count += 1
+            self.advance()
+        if '*' in unikali_str:
+            if simbolio_count == 1:
+                return Token(TT_MUL, pos_start=self.pos)
+            else:
+                return Token(TT_UNIMUL, (str(simbolio_count) + "*"), pos_start, self.pos)
+        elif '/' in unikali_str:
+            if simbolio_count == 1:
+                return Token(TT_DIV, pos_start=self.pos)
+            else:
+                return Token(TT_UNIDIV, (str(simbolio_count) + "/"), pos_start, self.pos)
+        elif '+' in unikali_str:
+            if simbolio_count == 1:
+                return Token(TT_PLUS, pos_start=self.pos)
+            else:
+                return Token(TT_UNIPLUS, (str(simbolio_count) + "+"), pos_start, self.pos)
+        elif '-' in unikali_str:
+            if simbolio_count == 1:
+                return Token(TT_MINUS, pos_start=self.pos)
+            else:
+                return Token(TT_UNIMINUS, (str(simbolio_count) + "-"), pos_start, self.pos)
 
 
 # Nodes
@@ -255,7 +289,7 @@ class Parser:
         res = ParseResult()
         tok = self.current_tok
 
-        if tok.type in (TT_PLUS, TT_MINUS):
+        if tok.type in (TT_PLUS, TT_MINUS, TT_UNIPLUS, TT_UNIMINUS):
             res.register(self.advance())
             factor = res.register(self.factor())
             if res.error: return res
@@ -283,10 +317,10 @@ class Parser:
         ))
 
     def term(self):
-        return self.bin_op(self.factor, (TT_MUL, TT_DIV))
+        return self.bin_op(self.factor, (TT_MUL, TT_DIV, TT_UNIMUL, TT_UNIDIV))
 
     def expr(self):
-        return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
+        return self.bin_op(self.term, (TT_PLUS, TT_MINUS, TT_UNIPLUS, TT_UNIMINUS))
 
     def bin_op(self, func, ops):
         res = ParseResult()
@@ -340,13 +374,33 @@ class Number:
         if isinstance(other, Number):
             return Number(self.value + other.value).set_context(self.context), None
 
+    def uniadded_to(self, other, symbol):
+        if isinstance(other, Number):
+            times = int(symbol[0])
+            return Number(self.value + (times * other.value)).set_context(self.context), None
+
     def subbed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value - other.value).set_context(self.context), None
 
+    def unisubbed_by(self, other, symbol):
+        if isinstance(other, Number):
+            times = int(symbol[0])
+            return Number(self.value - (times * other.value)).set_context(self.context), None
+
     def multed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value * other.value).set_context(self.context), None
+
+    def unimulted_by(self, other, symbol):
+        if isinstance(other, Number):
+            times = int(symbol[0])
+            a = self.value
+            b = other.value
+            while times != 0:
+                a = a * b
+                times = times - 1
+            return Number(a).set_context(self.context), None
 
     def dived_by(self, other):
         if isinstance(other, Number):
@@ -354,6 +408,19 @@ class Number:
                 return None, RTError(other.pos_start, other.pos_end, 'Dalyba iš 0', self.context)
             else:
                 return Number(self.value / other.value).set_context(self.context), None
+
+    def unidived_by(self, other, symbol):
+        if isinstance(other, Number):
+            times = int(symbol[0])
+            a = self.value
+            b = other.value
+            while times != 0:
+                a = a / b
+                times = times - 1
+            if other.value == 0:
+                return None, RTError(other.pos_start, other.pos_end, 'Dalyba iš 0', self.context)
+            else:
+                return Number(a).set_context(self.context), None
 
     def __repr__(self):
         return str(self.value)
@@ -398,6 +465,14 @@ class Interpreter:
             result, error = left.multed_by(right)
         elif node.op_tok.type == TT_DIV:
             result, error = left.dived_by(right)
+        elif node.op_tok.type == TT_UNIPLUS:
+            result, error = left.uniadded_to(right, node.op_tok.value)
+        elif node.op_tok.type == TT_UNIMINUS:
+            result, error = left.unisubbed_by(right, node.op_tok.value)
+        elif node.op_tok.type == TT_UNIMUL:
+            result, error = left.unimulted_by(right, node.op_tok.value)
+        elif node.op_tok.type == TT_UNIDIV:
+            result, error = left.unidived_by(right, node.op_tok.value)
 
         if error:
             return res.failure(error)
