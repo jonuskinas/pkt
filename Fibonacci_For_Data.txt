@@ -1,0 +1,11 @@
+SKAIT X = 1
+SKAIT Y = 1
+EIL Q = ""
+RAŠYTI(Q, "Fibonacci_For_Rez.txt", "naujas")
+NUO i = 0 IKI 21 TADA
+	SKAIT TARP = X
+	SKAIT X = Y
+	SKAIT Y = TARP + Y
+	RAŠYTI(Y, "Fibonacci_For_Rez.txt", "pridėti")
+	SPAUSDINTI(Y)
+PABAIGA
