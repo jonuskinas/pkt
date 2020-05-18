@@ -2,7 +2,12 @@ import lexer
 
 while True:
     text = input('Arkliamusys > ')
+    if text.strip() == "": continue
     result, error = lexer.run('<stdin>', text)
 
     if error: print(error.as_string())
-    else: print(result)
+    elif result:
+        if len(result.elements) == 1:
+            print(repr(result.elements[0]))
+        else:
+            print(repr(result))

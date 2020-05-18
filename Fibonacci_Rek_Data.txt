@@ -1,0 +1,14 @@
+FUN fibonacci_rek(n)
+	JEIGU n == 0 TADA
+	    GRĄŽINTI 0
+	KITAS_JEIGU n == 1 TADA
+	    GRĄŽINTI 1
+	KITAS GRĄŽINTI (fibonacci_rek(n-1) + fibonacci_rek(n-2))
+PABAIGA
+EIL X = ""
+RAŠYTI(X, "Fibonacci_Rek_Rez.txt", "naujas")
+NUO i = 0 IKI 24 TADA
+    SKAIT ATS = fibonacci_rek(i)
+    SPAUSDINTI(ATS)
+    RAŠYTI(ATS, "Fibonacci_Rek_Rez.txt", "pridėti")
+PABAIGA
